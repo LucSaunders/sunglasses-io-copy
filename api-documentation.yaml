@@ -24,7 +24,7 @@ paths:
             items:
               $ref: '#/definitions/Brands'
         '404':
-          description: Brands not found.
+          description: Brands not found
         default:
           description: Unexpected error
         schema:
@@ -49,7 +49,7 @@ paths:
             items:
               $ref: '#/definitions/ProductsByBrand'
         '404':
-          description: Brand id or products not found.
+          description: Brand id or products not found
         default:
           description: Unexpected error
         schema:
