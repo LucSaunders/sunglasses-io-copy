@@ -102,7 +102,7 @@ paths:
           schema:
             type: string
         '400':
-          description: Incorrectly formatted credentials
+          description: Invalid format of credentials
         '401':
           description: Invalid username or password
         default:
@@ -196,7 +196,7 @@ paths:
             items:
               $ref: '#/definitions/Cart'
         '400':
-          description: Invalid product Id
+          description: Invalid product id
         '401':
           description: You must have access to this endpoint to continue
         '404':

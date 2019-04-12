@@ -14,9 +14,10 @@ let accessTokens = [];
 // Create an object to maintain number of failed login attempts per user
 let failedLoginAttempts = {};
 
-/****************************************************************
+/***************************************************************************
  *  Populate global state variables with /initial-data json files
- ****************************************************************/
+ *  (using .readFileSync so they finish loading before the server starts)
+ ***************************************************************************/
 // Read in brands.json file
 let brands = JSON.parse(fs.readFileSync('./initial-data/brands.json', 'utf8'));
 console.log(`Server setup: ${brands.length} brands loaded`);
@@ -50,22 +51,16 @@ var setNumberOfFailedLoginRequests = (username, numFails) => {
 /************************************************
  * // Helper method to process access token
  * *********************************************/
-// Create a variable to limit validity of access tokens to 15 minutes
+// A variable to limit validity of access tokens to 15 minutes
 const TOKEN_VALIDITY_TIMEOUT = 15 * 60 * 1000;
-var getValidTokenFromRequest = request => {
-  var parsedUrl = require('url').parse(request.url, true);
-  if (parsedUrl.query.accessToken) {
-    // Verify the access token to make sure it's valid and not expired
+const getValidTokenFromRequest = request => {
+  if (request.headers.token) {
     let currentAccessToken = accessTokens.find(accessToken => {
       return (
-        accessToken.token == parsedUrl.query.accessToken &&
+        accessToken.token == request.headers.token &&
         new Date() - accessToken.lastUpdated < TOKEN_VALIDITY_TIMEOUT
       );
     });
-    // Version of above declaration, WITHOUT TIMEOUT
-    // let currentAccessToken = accessTokens.find(accessToken => {
-    //   return accessToken.token == parsedUrl.query.accessToken;
-    // });
     if (currentAccessToken) {
       return currentAccessToken;
     } else {
@@ -76,6 +71,7 @@ var getValidTokenFromRequest = request => {
   }
 };
 
+/***************************************************************************/
 // Set up headers
 const HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -109,21 +105,22 @@ const server = http
     }
   });
 
-/***********************************
- *   GET / or GET /api
- ***********************************/
-router.get('/', (request, response) => {
-  response.writeHead(200, HEADERS);
-  // Object.assign(HEADERS, { 'Content-Type': 'application/json' })
-  response.end(
-    "There's nothing to see here, please visit /api/brands or /api/products"
-  );
-});
-router.get('/api', (request, response) => {
-  response.writeHead(200, HEADERS);
-  // Object.assign(HEADERS, { 'Content-Type': 'application/json' })
-  response.end(redirectionMessage);
-});
+// FIXME:
+// /***********************************
+//  *   GET / or GET /api
+//  ***********************************/
+// router.get('/', (request, response) => {
+//   response.writeHead(200, HEADERS);
+//   // Object.assign(HEADERS, { 'Content-Type': 'application/json' })
+//   response.end(
+//     "There's nothing to see here, please visit /api/brands or /api/products"
+//   );
+// });
+// router.get('/api', (request, response) => {
+//   response.writeHead(200, HEADERS);
+//   // Object.assign(HEADERS, { 'Content-Type': 'application/json' })
+//   response.end(redirectionMessage);
+// });
 
 /*********************************************
  *   Brands: GET /api/brands <> Public route
@@ -144,7 +141,6 @@ router.get('/api/brands', (request, response) => {
 /********************************************************************
  *   Products by brand: GET api/brands/id:/products <> Public route
  ********************************************************************/
-// GET /api/brands/:id/products
 router.get('/api/brands/:id/products', (request, response) => {
   const { id } = request.params;
   const brandSpecificProducts = products.filter(
@@ -197,10 +193,9 @@ router.post('/api/login', (request, response) => {
       // For validated user, reset counter of failed logins
       setNumberOfFailedLoginRequests(request.body.username, 0);
       // Write header for successful login
-      response.writeHead(
-        200,
-        Object.assign(HEADERS, { 'Content-Type': 'application/json' })
-      );
+      response.writeHead(200, 'Successful login', {
+        'Content-Type': 'application/json'
+      });
       // response.end();
 
       // Check access token
@@ -233,8 +228,87 @@ router.post('/api/login', (request, response) => {
     }
   } else {
     // Missing one of the parameters, something is wrong with formatting
-    response.writeHead(400, 'Incorrectly formatted response');
+    response.writeHead(400, 'Invalid format of credentials');
     response.end();
+  }
+});
+
+/************************************************
+ *  Cart: GET /api/me/cart
+ *  <> Protected Route, requires access token
+ ************************************************/
+
+router.get('/api/me/cart', (request, response) => {
+  let validAccessToken = getValidTokenFromRequest(request);
+  if (!validAccessToken) {
+    response.writeHead(
+      401,
+      'You need to have access to this endpoint to continue'
+    );
+    response.end();
+  } else {
+    let userAccessToken = accessTokens.find(tokenObject => {
+      return tokenObject.token == request.headers.token;
+    });
+    let user = users.find(user => {
+      return user.login.username == userAccessToken.username;
+    });
+    if (!user) {
+      response.writeHead(404, 'That user cannot be found');
+      response.end();
+      return;
+    } else {
+      response.writeHead(200, 'Successfully retrieved a users cart', {
+        'Content-Type': 'application/json'
+      });
+      response.end(JSON.stringify(user.cart));
+    }
+  }
+});
+
+/****************************************************
+ *  Add Items to Cart: POST /api/me/cart/:productId
+ *  <> Protected Route, requires access token
+ ****************************************************/
+router.post('/api/me/cart/:productId', (request, response) => {
+  let validAccessToken = getValidTokenFromRequest(request);
+  if (!validAccessToken) {
+    response.writeHead(
+      401,
+      'You must have access to this endpoint to continue'
+    );
+    response.end();
+  } else {
+    let userAccessToken = accessTokens.find(tokenObject => {
+      return tokenObject.token == request.headers.token;
+    });
+    let user = users.find(user => {
+      return user.login.username == userAccessToken.username;
+    });
+    if (!user) {
+      response.writeHead(404, 'User cannot be found');
+      response.end();
+      return;
+    } else {
+      const { productId } = request.params;
+      const validProductId = products.find(product => product.id === productId);
+      if (!validProductId) {
+        response.writeHead(400, 'Invalid product Id');
+        response.end();
+      }
+      const productInCart = user.cart.find(product => product.id === productId);
+      if (!productInCart) {
+        const productToAdd = products.filter(
+          product => product.id === productId
+        );
+        Object.assign(productToAdd[0], { quantity: 1 });
+        user.cart.push(productToAdd[0]);
+      } else {
+        productInCart.quantity += 1;
+      }
+      response.writeHead(200, { 'Content-Type': 'application/json' });
+      response.end(JSON.stringify(user.cart));
+    }
   }
 });
 
@@ -247,32 +321,10 @@ module.exports = server;
 // GET /api/brands
 // GET /api/brands/:id/products
 // GET /api/products
-
-/*=======PENDING=======*/
 // POST /api/login
-
-/*======ABANDONED======*/
-// GET /api/products/:id (Not original path recommended by assignment; abandoned)
-
-/*========TODO=========*/
 // GET /api/me/cart
-// POST /api/me/cart: Edit items already in the cart
-// DELETE /api/me/cart/:productId
 // POST /api/me/cart/:productId
 
-/**************************
- *  Cart: GET /api/me/cart
- **************************/
-
-/**********************************
- *  Edit Cart: POST /api/me/cart
- **********************************/
-// Edit quantity of items already in the cart)
-
-/*********************************************
- *  Delete Items in Cart: DELETE /api/me/cart
- ********************************************/
-
-/****************************************************
- *  Add Items to Cart: POST /api/me/cart/:productId
- ****************************************************/
+/*========TODO:=========*/
+// POST /api/me/cart:
+// DELETE /api/me/cart/:productId
