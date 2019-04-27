@@ -43,13 +43,13 @@ paths:
           type: string
       responses:
         '200':
-          description: Retrieved products by brand id
+          description: Retrieved products by brand ID
           schema:
             type: array
             items:
               $ref: '#/definitions/Products'
         '400':
-          description: Invalid brand id
+          description: Invalid brand ID
         default:
           description: Unexpected error
         schema:
@@ -73,8 +73,8 @@ paths:
             type: array
             items:
               $ref: '#/definitions/Products'
-        '400':
-          description: Bad request
+        '404':
+          description: No products match query
         default:
           description: Unexpected error
           schema:
@@ -128,8 +128,8 @@ paths:
               $ref: '#/definitions/Cart'
         '401':
           description: Access not authorized 
-        # '404':
-        #   description: User not found
+        '404':
+          description: User not found
         # default:
         #   description: Unexpected error
         #   schema:
@@ -194,11 +194,11 @@ paths:
             items:
               $ref: '#/definitions/Cart'
         '400':
-          description: Invalid product id
+          description: Invalid product ID
         '401':
           description: Access not authorized
-        # '404':
-        #   description: User not found
+        '404':
+          description: User not found
         default:
           description: Unexpected error
           schema:
@@ -212,7 +212,7 @@ paths:
         - name: productId
           in: path
           required: true
-          description: Id of product to remove from cart
+          description: ID of product to remove from cart
           type: string
         - name: accessToken
           in: header
@@ -227,7 +227,7 @@ paths:
             items:
               $ref: '#/definitions/Cart'
         '400':
-          description: Invalid product id
+          description: Invalid product ID
         '401':
           description: Access not authorized 
         # '404':
@@ -242,7 +242,7 @@ definitions:
     properties:
       id:
         type: string
-        description: Id for a specific brand
+        description: ID for a specific brand
       name:
         type: string
         description: Brand name of sunglasses
@@ -254,10 +254,10 @@ definitions:
     properties:
       id:
         type: string
-        description: Id for specific model of sunglasses
+        description: ID for specific model of sunglasses
       categoryId:
         type: string
-        description: Id for brand that makes the sunglasses product
+        description: ID for brand that makes the sunglasses product
       name:
         type: string
         description: Model name of the sunglasses product
@@ -294,10 +294,10 @@ definitions:
     properties:
       id:
         type: string
-        description: Id for specific model of sunglasses
+        description: ID for specific model of sunglasses
       categoryId:
         type: string
-        description: Id for brand that makes the sunglasses product
+        description: ID for brand that makes the sunglasses product
       name:
         type: string
         description: Model name of the sunglasses product

@@ -6,13 +6,7 @@ const Router = require('router');
 const bodyParser = require('body-parser');
 const uid = require('rand-token').uid;
 const url = require('url');
-
 const PORT = 3001;
-
-// Create a bank of user access tokens
-let accessTokens = [];
-// Create an object to maintain number of failed login attempts per user
-let failedLoginAttempts = {};
 
 /***************************************************************************
  *  Populate global state variables with /initial-data json files
@@ -32,27 +26,15 @@ console.log(`Server setup: ${products.length} products loaded`);
 let users = JSON.parse(fs.readFileSync('./initial-data/users.json', 'utf8'));
 console.log(`Server setup: ${users.length} users loaded`);
 
-/*************************************************************************
- * Helper methods to get/set number of failed requests per username
- * ***********************************************************************/
-var getNumberOfFailedLoginRequests = username => {
-  let currentNumberOfFailedRequests = failedLoginAttempts[username];
-  if (currentNumberOfFailedRequests) {
-    return currentNumberOfFailedRequests;
-  } else {
-    return 0;
-  }
-};
+// Create an array to hold tokens
+let accessTokens = [];
 
-var setNumberOfFailedLoginRequests = (username, numFails) => {
-  failedLoginAttempts[username] = numFails;
-};
-
-/************************************************
- * // Helper method to process access token
- * *********************************************/
 // A variable to limit validity of access tokens to 15 minutes
 const TOKEN_VALIDITY_TIMEOUT = 15 * 60 * 1000;
+
+/************************************************
+ * // Helper method to process/validate  access token
+ * *********************************************/
 const getValidTokenFromRequest = request => {
   if (request.headers.token) {
     let currentAccessToken = accessTokens.find(accessToken => {
@@ -70,14 +52,13 @@ const getValidTokenFromRequest = request => {
     return null;
   }
 };
-
 /***************************************************************************/
 // Set up headers
 const HEADERS = {
-  'Access-Control-Allow-Origin': '*',
+  // 'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers':
-    'Origin, X-Requested-With, Content-Type, Accept, X-Authentication'
-  // 'Content-Type': 'application/json' ???
+    'Origin, X-Requested-With, Content-Type, Accept, X-Authentication',
+  'Content-Type': 'application/json'
 };
 
 // Establish router and body-parser middleware
@@ -88,231 +69,220 @@ router.use(bodyParser.json());
 const server = http
   .createServer((request, response) => {
     // // Handle Preflight request
-    // if (request.method === 'OPTIONS') {
-    //   response.writeHead(200, HEADERS);
-    //   response.end();
-    // }
+    if (request.method === 'OPTIONS') {
+      response.writeHead(200, HEADERS);
+      response.end();
+    }
     router(request, response, finalHandler(request, response));
   })
-
-  // Begin listening on [local] port
   .listen(PORT, error => {
+    // Begin listening on [local] port
     if (error) {
       return console.log('Error on Server Startup: ', error);
-      // throw error?;
     } else {
       console.log(`Server is listening on port ${PORT}`);
     }
   });
 
-// FIXME:
-// /***********************************
-//  *   GET / or GET /api
-//  ***********************************/
-// router.get('/', (request, response) => {
-//   response.writeHead(200, HEADERS);
-//   // Object.assign(HEADERS, { 'Content-Type': 'application/json' })
-//   response.end(
-//     "There's nothing to see here, please visit /api/brands or /api/products"
-//   );
-// });
-// router.get('/api', (request, response) => {
-//   response.writeHead(200, HEADERS);
-//   // Object.assign(HEADERS, { 'Content-Type': 'application/json' })
-//   response.end(redirectionMessage);
-// });
-
 /*********************************************
  *   Brands: GET /api/brands <> Public route
  ********************************************/
 router.get('/api/brands', (request, response) => {
-  if (!brands) {
-    response.writeHead(404, 'No products found');
-    response.end();
-  } else {
-    response.writeHead(200, {
-      ...HEADERS,
-      'Content-Type': 'application/json'
-    });
-    response.end(JSON.stringify(brands));
-  }
+  response.writeHead(200, 'Retrieved all brands', {
+    ...HEADERS
+  });
+  response.end(JSON.stringify(brands));
 });
 
 /********************************************************************
- *   Products by brand: GET api/brands/id:/products <> Public route
+ *   Products by brand: GET api/brands/:id/products <> Public route
  ********************************************************************/
 router.get('/api/brands/:id/products', (request, response) => {
+  // Verify that the queried brand ID exists
   const { id } = request.params;
-  const brandSpecificProducts = products.filter(
-    product => product.categoryId === id
-  );
-  if (!brandSpecificProducts) {
-    response.writeHead(404, 'No products found');
+  let brandIdExists = brands.find(brand => {
+    return brand.id === request.params.id;
+  });
+  if (!brandIdExists) {
+    response.writeHead(400, 'Invalid brand ID');
     response.end();
-  } else {
-    response.writeHead(200, { 'Content-Type': 'application/json' });
-    response.end(JSON.stringify(brandSpecificProducts));
   }
+  const brandFilteredProducts = products.filter(
+    brand => brand.categoryId === id
+  );
+  response.writeHead(200, 'Retrieved products by brand ID', {
+    ...HEADERS
+  });
+  response.end(JSON.stringify(brandFilteredProducts));
 });
 
 /*************************************************
  *   Products: GET /api/products <> Public route
  *************************************************/
 router.get('/api/products', (request, response) => {
-  if (!products) {
-    response.writeHead(404, 'No products found');
-    response.end();
+  const parsedUrl = url.parse(request.url);
+  const { query } = queryString.parse(parsedUrl.query);
+  let queriedProducts = [];
+  if (query !== undefined && products.length > 0) {
+    queriedProducts = products.filter(
+      individualProduct =>
+        individualProduct.name.includes(query) ||
+        individualProduct.description.includes(query)
+    );
+    if (queriedProducts.length > 0) {
+      response.writeHead(200, 'Retrieved all products', {
+        ...HEADERS
+      });
+      response.end(JSON.stringify(queriedProducts));
+    } else {
+      response.writeHead(404, 'No products match query');
+      return response.end();
+    }
+    // } else if {
+    //   response.writeHead(400, 'Unexpected error');
+    //   return response.end();
   } else {
-    response.writeHead(200, {
-      ...HEADERS,
-      'Content-Type': 'application/json'
+    // queriedProducts = products;
+    response.writeHead(200, 'Retrieved all products', {
+      ...HEADERS
     });
     response.end(JSON.stringify(products));
   }
 });
 
-/*****************************************
- *   User login: POST /api/login
- *****************************************/
+/**************************************************
+ *   User login: POST /api/login <> Public route
+ **************************************************/
 router.post('/api/login', (request, response) => {
-  // Ensure username and password are in the request
-  // if (request.body.username && request.body.password) {
-  if (
-    request.body.username &&
-    request.body.password &&
-    getNumberOfFailedLoginRequests(request.body.username) < 3
-  ) {
-    // Verify username and password
-    let user = users.find(user => {
-      return (
-        user.login.username == request.body.username &&
-        user.login.password == request.body.password
-      );
-    });
-    if (user) {
-      // For validated user, reset counter of failed logins
-      setNumberOfFailedLoginRequests(request.body.username, 0);
-      // Write header for successful login
-      response.writeHead(200, 'Successful login', {
-        'Content-Type': 'application/json'
-      });
-      // response.end();
+  const { username, password } = request.body;
 
-      // Check access token
-      let currentAccessToken = accessTokens.find(tokenObject => {
-        return tokenObject.username == user.login.username;
+  // Ensure necessary fields are entered
+  if (!username || !password) {
+    response.writeHead(400, 'Invalid username or password');
+    response.end();
+  }
+  // Check for existing user
+  users.findOne({ username }).then(user => {
+    if (!user) {
+      response.writeHead(400, 'Invalid username or password');
+      response.end();
+    }
+
+    // Validate password
+    else if (user.login.password !== request.body.password) {
+      response.writeHead(400, 'Invalid username or password');
+      response.end();
+    } else if (
+      user.login.username == request.body.username &&
+      user.login.password == request.body.password
+    ) {
+      // After username and password validated, check access token
+      let currentAccessToken = accessTokens.find(tokenVerifictation => {
+        return tokenVerifictation.username == user.login.username;
       });
 
-      // Update value for time period
       if (currentAccessToken) {
         currentAccessToken.lastUpdated = new Date();
+        response.writeHead(200, 'Now logged in', { ...HEADERS });
         response.end(JSON.stringify(currentAccessToken.token));
       } else {
-        // Create new token with the user value and a "random" token (via rand-token)
         let newAccessToken = {
           username: user.login.username,
           lastUpdated: new Date(),
           token: uid(16)
         };
         accessTokens.push(newAccessToken);
+        response.writeHead(200, 'Now logged in', { ...HEADERS });
         response.end(JSON.stringify(newAccessToken.token));
       }
-    } else {
-      // Update number of failed login attempts
-      let numFailedForUser = getNumberOfFailedLoginRequests(
-        request.body.username
-      );
-      setNumberOfFailedLoginRequests(request.body.username, numFailedForUser++);
-      response.writeHead(401, 'Invalid username or password');
-      response.end();
     }
-  } else {
-    // Missing one of the parameters, something is wrong with formatting
-    response.writeHead(400, 'Invalid format of credentials');
-    response.end();
-  }
+  });
 });
 
-/************************************************
- *  Cart: GET /api/me/cart
- *  <> Protected Route, requires access token
- ************************************************/
-
+/*****************************************************
+ *  Retrieve Cart: GET /api/me/cart <> Protected route
+ *****************************************************/
 router.get('/api/me/cart', (request, response) => {
-  let validAccessToken = getValidTokenFromRequest(request);
-  if (!validAccessToken) {
-    response.writeHead(
-      401,
-      'You need to have access to this endpoint to continue'
-    );
+  let currentAccessToken = getValidTokenFromRequest(request);
+  // Verify access token
+  if (!currentAccessToken) {
+    response.writeHead(401, 'Access not authorized');
     response.end();
   } else {
-    let userAccessToken = accessTokens.find(tokenObject => {
-      return tokenObject.token == request.headers.token;
+    let userAccessToken = accessTokens.find(tokenVerification => {
+      return tokenVerification.token == request.headers.token;
     });
-    let user = users.find(user => {
-      return user.login.username == userAccessToken.username;
+    let currentUser = users.find(theCurrentUser => {
+      theCurrentUser.username == userAccessToken.username;
     });
-    if (!user) {
-      response.writeHead(404, 'That user cannot be found');
+    if (!currentUser) {
+      response.writeHead(404, 'User not found');
       response.end();
       return;
     } else {
-      response.writeHead(200, 'Successfully retrieved a users cart', {
-        'Content-Type': 'application/json'
-      });
-      response.end(JSON.stringify(user.cart));
+      response.writeHead(200, 'Retrieved users cart', { ...HEADERS });
+      response.end(JSON.stringify(currentUser.cart));
     }
   }
 });
 
 /****************************************************
  *  Add Items to Cart: POST /api/me/cart/:productId
- *  <> Protected Route, requires access token
+ *  <> Protected oute
  ****************************************************/
 router.post('/api/me/cart/:productId', (request, response) => {
-  let validAccessToken = getValidTokenFromRequest(request);
-  if (!validAccessToken) {
-    response.writeHead(
-      401,
-      'You must have access to this endpoint to continue'
-    );
+  let currentAccessToken = getValidTokenFromRequest(request);
+  // Verify access token
+  if (!currentAccessToken) {
+    response.writeHead(401, 'Access not authorized');
     response.end();
   } else {
-    let userAccessToken = accessTokens.find(tokenObject => {
-      return tokenObject.token == request.headers.token;
+    let userAccessToken = accessTokens.find(tokenVerifictation => {
+      return tokenVerifictation.token == request.headers.token;
     });
-    let user = users.find(user => {
-      return user.login.username == userAccessToken.username;
+    let currentUser = users.find(aCurrentUser => {
+      return aCurrentUser.login.username == userAccessToken.username;
     });
-    if (!user) {
-      response.writeHead(404, 'User cannot be found');
+    if (!currentUser) {
+      response.writeHead(404, 'User not found');
       response.end();
       return;
     } else {
       const { productId } = request.params;
       const validProductId = products.find(product => product.id === productId);
       if (!validProductId) {
-        response.writeHead(400, 'Invalid product Id');
+        response.writeHead(400, 'Invalid product ID');
         response.end();
       }
-      const productInCart = user.cart.find(product => product.id === productId);
-      if (!productInCart) {
-        const productToAdd = products.filter(
+      const itemInCart = currentUser.cart.find(
+        product => product.id === productId
+      );
+      if (!itemInCart) {
+        const itemAddition = products.filter(
           product => product.id === productId
         );
-        Object.assign(productToAdd[0], { quantity: 1 });
-        user.cart.push(productToAdd[0]);
+        Object.assign(itemAddition[0], { quantity: 1 });
+        user.cart.push(itemAddition[0]);
       } else {
-        productInCart.quantity += 1;
+        itemInCart.quantity += 1;
       }
-      response.writeHead(200, { 'Content-Type': 'application/json' });
+      response.writeHead(200, 'Product added to user cart', { ...HEADERS });
       response.end(JSON.stringify(user.cart));
     }
   }
 });
 
 module.exports = server;
+
+/***********************
+ *  Notes
+ **********************/
+// Create -> Post (nonidempotent)
+// Read   -> Get
+// Update -> Put (can create a new entity or update an existing one; most appropriate for 'Edit cart'?)
+// Delete -> Delete (idempotent; can be an asynchronous or long-running request)
+
+/*=======================*/
 
 /***********************
  *  All Routes

@@ -122,7 +122,7 @@ describe('/GET products', () => {
         done();
       });
   });
-  it('should return a 400 BAD REQUEST error if the query yields no products', done => {
+  it('should return 404 NO PRODUCTS MATCH QUERY if the query yields no products', done => {
     chai
       .request(server)
       .get('/api/products?query=fartbarf')

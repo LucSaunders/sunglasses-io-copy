@@ -4,7 +4,8 @@
   "description": "",
   "main": "server.js",
   "scripts": {
-    "start": "node app/server.js"
+    "start": "node app/server.js",
+    "test": "mocha"
   },
   "keywords": [],
   "author": "",
