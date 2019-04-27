@@ -18,18 +18,18 @@ paths:
       operationId: retrieveBrands
       responses:
         '200':
-          description: An array of sunglass-brand objects
+          description: Retrieved all brands
           schema:
             type: array
             items:
               $ref: '#/definitions/Brands'
-        '404':
-          description: Brands not found
+        '400':
+          description: Bad request
         default:
           description: Unexpected error
-        schema:
-          $ref: '#/definitions/Errors'
-  /brands/{id}/products: #or should it be "/:id/"
+          schema:
+            $ref: '#/definitions/Error'
+  /brands/{id}/products: 
     get:
       tags:
         - Products by Brand
@@ -39,17 +39,17 @@ paths:
         - name: id
           in: path
           required: true
-          description: Identifier of a specific brand
+          description: Id of a specific brand
           type: string
       responses:
         '200':
-          description: An array of sunglass products by one brand
+          description: Retrieved products by brand id
           schema:
             type: array
             items:
-              $ref: '#/definitions/ProductsByBrand'
-        '404':
-          description: Brand id or products not found
+              $ref: '#/definitions/Products'
+        '400':
+          description: Invalid brand id
         default:
           description: Unexpected error
         schema:
@@ -58,27 +58,27 @@ paths:
     get:
       tags:
         - Products
-      summary: Returns products of sunglasses as filtered by user query. Returns all products if query is empty.
+      summary: Returns products of sunglasses filtered by user query. Returns all products if query is empty.
       operationId: retrieveProducts
       parameters:
         - name: query
           in: path
-          description: Users search query
-          required: false
+          required: true
+          description: User's query
           type: string
       responses:
         '200':
-          description: An array of sunglass products by one brand
+          description: Retrieved all products
           schema:
             type: array
             items:
               $ref: '#/definitions/Products'
-        '404':
-          description: Products not found
+        '400':
+          description: Invalid query
         default:
           description: Unexpected error
-        schema:
-          $ref: '#/definitions/Errors'
+          schema:
+            $ref: '#/definitions/Error'
   /login:
     post:
       tags:
@@ -90,19 +90,17 @@ paths:
       produces:
         - application/json
       parameters:
-        - in: body
-          name: login
-          description: Login credentials
+        - name: login
+          in: body
           required: true
+          description: Login criteria
           schema:
             $ref: '#/definitions/Login'
       responses:
         '200':
-          description: Successful login
+          description: Now logged in
           schema:
             type: string
-        '400':
-          description: Invalid format of credentials
         '401':
           description: Invalid username or password
         default:
@@ -113,84 +111,117 @@ paths:
     get:
       tags:
         - Shopping Cart
-      summary: Retrieve signed-in users cart
+      summary: Retrieve signed-in user cart
       operationId: retrieveCart
       parameters:
-        - in: header
-          name: accessToken
-          description: The users access token
+        - name: accessToken
+          in: header
           required: true
+          description: User access token
           type: string
       responses:
         '200':
-          description: An array of sunglass products in the users cart
+          description: Retrieved user cart
           schema:
             type: array
             items:
               $ref: '#/definitions/Cart'
         '401':
-          description: You must have access to this endpoint to continue
+          description: Access not authorized 
         '404':
-          description: User cannot be found
+          description: User not found
         default:
           description: Unexpected error
           schema:
             $ref: '#/definitions/Error'
-    put: #post???
+    post:
       tags:
         - Shopping Cart
-      summary: Update quantities of products in cart
+      summary: Update product quantities in cart
       operationId: addToCart
       consumes:
         - application/json
       produces:
         - application/json
       parameters:
-        - in: header
-          name: accessToken
-          description: The users access token
+        - name: accessToken
+          in: header
           required: true
+          description: User access token
           type: string
-        - in: body
-          name: updatedQuantities
-          description: Updated quantities of products in cart
+        - name: updatedProductQuantities
+          in: body
           required: true
+          description: Update product quantity in user cart
           schema:
             $ref: '#/definitions/Quantities'
       responses:
         '200':
-          description: Successfully updated cart
+          description: Updated product quanity in user cart
           schema:
             type: array
             items:
               $ref: '#/definitions/Cart'
         '401':
-          description: You must have access to this endpoint to continue
+          description: Access not authorized. 
         '404':
-          description: User cannot be found
+          description: User not found
         default:
           description: Unexpected error
           schema:
             $ref: '#/definitions/Errors'
-    delete:
+  /me/cart/:productId:
+    post:
       tags:
         - Shopping Cart
-      summary: Delete items from cart
-      operationId: deleteCartItems
+      summary: Add product to user cart
       parameters:
-        - in: path
-          name: productId
-          description: Identifier of product to remove from cart
+        - name: productId
+          in: path
           required: true
+          description: Id of product to add to user cart
           type: string
-        - in: header
-          name: accessToken
-          description: The users access token
+        - name: accessToken
+          in: header
           required: true
+          description: User access token
           type: string
       responses:
         '200':
-          description: Item successfuly deleted from cart
+          description: Product added to user cart
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Cart'
+        '400':
+          description: Invalid product Id
+        '401':
+          description: Access not authorized
+        '404':
+          description: User not found
+        default:
+          description: Unexpected error
+          schema:
+            $ref: '#/definitions/Error'
+    delete:
+      tags:
+        - Shopping Cart
+      summary: Delete product from cart
+      operationId: deleteCartItems
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          description: Id of product to remove from cart
+          type: string
+        - name: accessToken
+          in: header
+          required: true
+          description: The users access token
+          type: string
+      responses:
+        '200':
+          description: Product deleted from cart
           schema:
             type: array
             items:
@@ -198,7 +229,7 @@ paths:
         '400':
           description: Invalid product id
         '401':
-          description: You must have access to this endpoint to continue
+          description: Access not authorized. 
         '404':
           description: User cannot be found
         default:
@@ -208,124 +239,96 @@ paths:
 definitions:
   Brands:
     type: object
-    required:
-      - id
-      - name
     properties:
       id:
         type: string
-        description: Identifier representing a specific brand
+        description: Id for a specific brand
       name:
         type: string
-        description: The brand name of sunglasses
-  ProductsByBrand:
-    type: object
+        description: Brand name of sunglasses
     required:
       - id
-      - categoryId
       - name
-      - price
-    properties:
-      id:
-        type: string
-        description: Identifier representing one specific model of sunglasses
-      categoryId:
-        type: string
-        description: Identifier representing the brand that makes the sunglasses product
-      name:
-        type: string
-        description: The model name of the sunglasses product
-      description:
-        type: string
-        description: A short description of the model of sunglasses
-      price:
-        type: number
-        description: The unit price of the sunglasses
-      imageUrls:
-        type: array
-        items:
-          type: string
-        description: Three urls for jpg photos of the specific model of sunglasses (currently all product objects contain the same imageUrl, repeated three times, as a placeholder)
   Products:
     type: object
-    required:
-      - id
-      - categoryId
-      - name
-      - price
     properties:
       id:
         type: string
-        description: Identifier representing one specific model of sunglasses
+        description: Id for specific model of sunglasses
       categoryId:
         type: string
-        description: Identifier representing the brand that makes the sunglasses product
+        description: Id for brand that makes the sunglasses product
       name:
         type: string
-        description: The model name of the sunglasses product
+        description: Model name of the sunglasses product
       description:
         type: string
         description: A short description of the model of sunglasses
       price:
         type: number
-        description: The unit price of the sunglasses
+        description: Unit price of the sunglasses product
       imageUrls:
         type: array
         items:
           type: string
-        description: Three urls for jpg photos of the specific model of sunglasses (currently all product objects contain the same imageUrl, repeated three times, as a placeholder)
+        description: Three urls for jpg photos of the specific model of sunglasses
+    required:
+      - id
+      - categoryId
+      - name
+      - price
   Login:
     type: object
-    required:
-      - username
-      - password
     properties:
       username:
         type: string
-        description: username
+        description: Username
       password:
         type: string
-        description: password
+        description: Password
+    required:
+      - username
+      - password
   Cart:
     type: object
-     required:
+    properties:
+      id:
+        type: string
+        description: Id for specific model of sunglasses
+      categoryId:
+        type: string
+        description: Id for brand that makes the sunglasses product
+      name:
+        type: string
+        description: Model name of the sunglasses product
+      description:
+        type: string
+        description: A short description of the model of sunglasses
+      price:
+        type: number
+        description: Unit price of the sunglasses product
+      imageUrls:
+        type: array
+        items:
+          type: string
+        description: Three urls for jpg photos of the specific model of sunglasses
+      quantity:
+        type: integer
+        description: The quanity of the specified item in the cart
+    required:
       - id
       - categoryId
       - name
       - price
       - quantity
-    properties:
-      id:
-        type: string
-        description: Identifier representing one specific model of sunglasses
-      categoryId:
-        type: string
-        description: Identifier representing the brand that makes the sunglasses product
-      name:
-        type: string
-        description: The model name of the sunglasses product
-      description:
-        type: string
-        description: A short description of the model of sunglasses
-      price:
-        type: number
-        description: The unit price of the sunglasses
-      imageUrls:
-        type: array
-        items:
-          type: string
-        description: Three urls for jpg photos of the specific model of sunglasses (currently all product objects contain the same imageUrl, repeated three times, as a placeholder)
-      quantity:
-        type: integer
-        description: The quanity of the specified item in the cart
   Quantities:
     type: object
     properties:
-      updatedQuantities:
+      updatedProdcutQuantities:
         type: array
         items:
-          type: number
-        description: Array of updated quantities of items in the cart
+          type: integer
+        description: Products quantities in cart
   Errors:
     type: object
     properties:
@@ -336,6 +339,43 @@ definitions:
         type: string
       fields:
         type: string
+# 
+# **********************
+#    4xx Client Errors
+#  **********************
+#  400 Bad Request
+#  401 Unauthorized
+#  402 Payment Required
+#  403 Forbidden
+#  404 Not Found
+#  405 Method Not Allowed
+#  406 Not Acceptable
+#  407 Proxy Authentication Required
+#  408 Request Timeout
+#  409 Conflict
+#  410 Gone
+#  411 Length Required
+#  412 Precondition Failed
+#  413 Request Entity Too Large
+#  414 Request-URI Too Long
+#  415 Unsupported Media Type
+#  416 Requested Range Not Satisfiable
+#  417 Expectation Failed
+#  418 I'm a teapot (RFC 2324)
+#  420 Enhance Your Calm (Twitter)
+#  422 Unprocessable Entity (WebDAV)
+#  423 Locked (WebDAV)
+#  424 Failed Dependency (WebDAV)
+#  425 Reserved for WebDAV
+#  426 Upgrade Required
+#  428 Precondition Required
+#  429 Too Many Requests
+#  431 Request Header Fields Too Large
+#  444 No Response (Nginx)
+#  449 Retry With (Microsoft)
+#  450 Blocked by Windows Parental Controls (Microsoft)
+#  451 Unavailable For Legal Reasons
+#  499 Client Closed Request (Nginx)
 
 # **********************
 #    All Routes
@@ -347,12 +387,11 @@ definitions:
 
 # =======PENDING=======
 #  POST /api/login
-
-# ======ABANDONED======
-#  GET /api/products/:id (Not original path recommended by assignment; abandoned)
-
-# ========TODO=========
 #  GET /api/me/cart
 #  POST /api/me/cart
 #  DELETE /api/me/cart/:productId
 #  POST /api/me/cart/:productId
+
+# ======ABANDONED======
+#  GET /api/products/:id (Not original path recommended by assignment; abandoned)
+
