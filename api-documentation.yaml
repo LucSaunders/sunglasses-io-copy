@@ -63,8 +63,8 @@ paths:
       parameters:
         - name: query
           in: path
-          required: true
-          description: User's query
+          required: false
+          description: User query
           type: string
       responses:
         '200':
@@ -74,7 +74,7 @@ paths:
             items:
               $ref: '#/definitions/Products'
         '400':
-          description: Invalid query
+          description: Bad request
         default:
           description: Unexpected error
           schema:
@@ -128,12 +128,12 @@ paths:
               $ref: '#/definitions/Cart'
         '401':
           description: Access not authorized 
-        '404':
-          description: User not found
-        default:
-          description: Unexpected error
-          schema:
-            $ref: '#/definitions/Error'
+        # '404':
+        #   description: User not found
+        # default:
+        #   description: Unexpected error
+        #   schema:
+        #     $ref: '#/definitions/Error'
     post:
       tags:
         - Shopping Cart
@@ -164,13 +164,13 @@ paths:
               $ref: '#/definitions/Cart'
         '401':
           description: Access not authorized. 
-        '404':
-          description: User not found
+        # '404':
+        #   description: User not found
         default:
           description: Unexpected error
           schema:
             $ref: '#/definitions/Errors'
-  /me/cart/:productId:
+  /me/cart/{productId}:
     post:
       tags:
         - Shopping Cart
@@ -194,11 +194,11 @@ paths:
             items:
               $ref: '#/definitions/Cart'
         '400':
-          description: Invalid product Id
+          description: Invalid product id
         '401':
           description: Access not authorized
-        '404':
-          description: User not found
+        # '404':
+        #   description: User not found
         default:
           description: Unexpected error
           schema:
@@ -229,9 +229,9 @@ paths:
         '400':
           description: Invalid product id
         '401':
-          description: Access not authorized. 
-        '404':
-          description: User cannot be found
+          description: Access not authorized 
+        # '404':
+        #   description: User not found
         default:
           description: Unexpected error
           schema:
