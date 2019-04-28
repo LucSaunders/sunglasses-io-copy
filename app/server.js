@@ -33,7 +33,7 @@ let accessTokens = [];
 const TOKEN_VALIDITY_TIMEOUT = 15 * 60 * 1000;
 
 /************************************************
- * // Helper method to process/validate  access token
+ * // Helper method to process/validate access token
  * *********************************************/
 const getValidTokenFromRequest = request => {
   if (request.headers.token) {
@@ -154,36 +154,23 @@ router.get('/api/products', (request, response) => {
  *   User login: POST /api/login <> Public route
  **************************************************/
 router.post('/api/login', (request, response) => {
-  const { username, password } = request.body;
-
-  // Ensure necessary fields are entered
-  if (!username || !password) {
-    response.writeHead(400, 'Invalid username or password');
-    response.end();
-  }
-  // Check for existing user
-  users.findOne({ username }).then(user => {
-    if (!user) {
-      response.writeHead(400, 'Invalid username or password');
-      response.end();
-    }
-
-    // Validate password
-    else if (user.login.password !== request.body.password) {
-      response.writeHead(400, 'Invalid username or password');
-      response.end();
-    } else if (
-      user.login.username == request.body.username &&
-      user.login.password == request.body.password
-    ) {
-      // After username and password validated, check access token
-      let currentAccessToken = accessTokens.find(tokenVerifictation => {
-        return tokenVerifictation.username == user.login.username;
+  if (request.body.username && request.body.password) {
+    let user = users.find(user => {
+      return (
+        user.login.username == request.body.username &&
+        user.login.password == request.body.password
+      );
+    });
+    if (user) {
+      let currentAccessToken = accessTokens.find(tokenObject => {
+        return tokenObject.username == user.login.username;
       });
 
       if (currentAccessToken) {
         currentAccessToken.lastUpdated = new Date();
-        response.writeHead(200, 'Now logged in', { ...HEADERS });
+        response.writeHead(200, 'Successful Login', {
+          'Content-Type': 'application/json'
+        });
         response.end(JSON.stringify(currentAccessToken.token));
       } else {
         let newAccessToken = {
@@ -192,16 +179,101 @@ router.post('/api/login', (request, response) => {
           token: uid(16)
         };
         accessTokens.push(newAccessToken);
-        response.writeHead(200, 'Now logged in', { ...HEADERS });
+        response.writeHead(200, 'Successful Login', {
+          'Content-Type': 'application/json'
+        });
         response.end(JSON.stringify(newAccessToken.token));
       }
+    } else {
+      response.writeHead(401, 'Invalid username or password');
+      response.end();
     }
-  });
+  } else {
+    response.writeHead(400, 'Incorrectly formatted credentials');
+    response.end();
+  }
 });
+
+/***********************
+ * OLd VERSION OF LOGIN
+ * *********************/
+// router.post('/api/login', (request, response) => {
+//   const { username, password } = request.body;
+
+//   // Ensure necessary fields are entered
+//   if (!username || !password) {
+//     response.writeHead(400, 'Invalid username or password');
+//     response.end();
+//   }
+//   // Check for existing user
+//   users.find({ username }).then(user => {
+//     if (!user) {
+//       response.writeHead(400, 'Invalid username or password');
+//       response.end();
+//     }
+
+//     // Validate password
+//     else if (user.login.password !== request.body.password) {
+//       response.writeHead(400, 'Invalid username or password');
+//       response.end();
+//     } else if (
+//       user.login.username == request.body.username &&
+//       user.login.password == request.body.password
+//     ) {
+//       // After username and password validated, check access token
+//       let currentAccessToken = accessTokens.find(tokenVerifictation => {
+//         return tokenVerifictation.username == user.login.username;
+//       });
+
+//       if (currentAccessToken) {
+//         currentAccessToken.lastUpdated = new Date();
+//         response.writeHead(200, 'Now logged in', { ...HEADERS });
+//         response.end(JSON.stringify(currentAccessToken.token));
+//       } else {
+//         let newAccessToken = {
+//           username: user.login.username,
+//           lastUpdated: new Date(),
+//           token: uid(16)
+//         };
+//         accessTokens.push(newAccessToken);
+//         response.writeHead(200, 'Now logged in', { ...HEADERS });
+//         response.end(JSON.stringify(newAccessToken.token));
+//       }
+//     }
+//   });
+// });
 
 /*****************************************************
  *  Retrieve Cart: GET /api/me/cart <> Protected route
  *****************************************************/
+// router.get('/api/me/cart', (request, response) => {
+//   let validAccessToken = getValidTokenFromRequest(request);
+//   if (!validAccessToken) {
+//     response.writeHead(
+//       401,
+//       'You need to have access to this endpoint to continue'
+//     );
+//     response.end();
+//   } else {
+//     let userAccessToken = accessTokens.find(tokenObject => {
+//       return tokenObject.token == request.headers.token;
+//     });
+//     let user = users.find(user => {
+//       return user.login.username == userAccessToken.username;
+//     });
+//     if (!user) {
+//       response.writeHead(404, 'That user cannot be found');
+//       response.end();
+//       return;
+//     } else {
+//       response.writeHead(200, 'Successfully retrieved a users cart', {
+//         'Content-Type': 'application/json'
+//       });
+//       response.end(JSON.stringify(user.cart));
+//     }
+//   }
+// });
+
 router.get('/api/me/cart', (request, response) => {
   let currentAccessToken = getValidTokenFromRequest(request);
   // Verify access token
