@@ -330,7 +330,7 @@ describe('/DELETE a product', () => {
   it('should receive a 400 INVALID PRODUCT ID if product id is invalid', done => {
     chai
       .request(server)
-      .post('/api/me/cart/12')
+      .delete('/api/me/cart/99')
       .set('token', token)
       .end((error, response) => {
         assert.isNull(error);
@@ -350,6 +350,19 @@ describe('/DELETE a product', () => {
         done();
       });
   });
+  // TODO: have test cart with some items in it, and test this delete with a valid product id not in cart
+  // it('should receive a 404 PRODUCT ITEM NOT IN CART if product item is not in cart', done => {
+  //   chai
+  //     .request(server)
+  //     .delete('/api/me/cart/8')
+  //     .set('token', token)
+  //     .end((error, response) => {
+  //       assert.isNull(error);
+  //       expect(response).to.have.status(404);
+  //       expect('Content-Type', 'application/json');
+  //       done();
+  //     });
+  // });
 });
 
 /*=====================================

@@ -195,33 +195,114 @@ router.post('/api/login', (request, response) => {
   }
 });
 
+/***********************
+ * OLd VERSION OF LOGIN
+ * *********************/
+// router.post('/api/login', (request, response) => {
+//   const { username, password } = request.body;
+
+//   // Ensure necessary fields are entered
+//   if (!username || !password) {
+//     response.writeHead(400, 'Invalid username or password');
+//     response.end();
+//   }
+//   // Check for existing user
+//   users.find({ username }).then(user => {
+//     if (!user) {
+//       response.writeHead(400, 'Invalid username or password');
+//       response.end();
+//     }
+
+//     // Validate password
+//     else if (user.login.password !== request.body.password) {
+//       response.writeHead(400, 'Invalid username or password');
+//       response.end();
+//     } else if (
+//       user.login.username == request.body.username &&
+//       user.login.password == request.body.password
+//     ) {
+//       // After username and password validated, check access token
+//       let currentAccessToken = accessTokens.find(tokenVerifictation => {
+//         return tokenVerifictation.username == user.login.username;
+//       });
+
+//       if (currentAccessToken) {
+//         currentAccessToken.lastUpdated = new Date();
+//         response.writeHead(200, 'Now logged in', { ...HEADERS });
+//         response.end(JSON.stringify(currentAccessToken.token));
+//       } else {
+//         let newAccessToken = {
+//           username: user.login.username,
+//           lastUpdated: new Date(),
+//           token: uid(16)
+//         };
+//         accessTokens.push(newAccessToken);
+//         response.writeHead(200, 'Now logged in', { ...HEADERS });
+//         response.end(JSON.stringify(newAccessToken.token));
+//       }
+//     }
+//   });
+// });
+
+/*****************************************************
+ *  Retrieve Cart: GET /api/me/cart <> Protected route
+ *****************************************************/
+// VERSION 1
+router.get('/api/me/cart', (request, response) => {
+  let validAccessToken = getValidTokenFromRequest(request);
+  if (!validAccessToken) {
+    response.writeHead(
+      401,
+      'You need to have access to this endpoint to continue'
+    );
+    response.end();
+  } else {
+    let userAccessToken = accessTokens.find(tokenObject => {
+      return tokenObject.token == request.headers.token;
+    });
+    let user = users.find(user => {
+      return user.login.username == userAccessToken.username;
+    });
+    if (!user) {
+      response.writeHead(404, 'That user cannot be found');
+      response.end();
+      return;
+    } else {
+      response.writeHead(200, 'Successfully retrieved a users cart', {
+        'Content-Type': 'application/json'
+      });
+      response.end(JSON.stringify(user.cart));
+    }
+  }
+});
+
 /*****************************************************
  *  Retrieve Cart: GET /api/me/cart <> Protected route
  *****************************************************/
 // VERSION 2
-router.get('/api/me/cart', (request, response) => {
-  let currentAccessToken = getValidTokenFromRequest(request);
-  // Verify access token
-  if (!currentAccessToken) {
-    response.writeHead(401, 'Access not authorized');
-    response.end();
-  } else {
-    let userAccessToken = accessTokens.find(tokenVerification => {
-      return tokenVerification.token == request.headers.token;
-    });
-    let currentUser = users.find(theCurrentUser => {
-      theCurrentUser.username == userAccessToken.username;
-    });
-    if (!currentUser) {
-      response.writeHead(404, 'User not found');
-      response.end();
-      return;
-    } else {
-      response.writeHead(200, 'Retrieved users cart', { ...HEADERS });
-      response.end(JSON.stringify(currentUser.cart));
-    }
-  }
-});
+// router.get('/api/me/cart', (request, response) => {
+//   let currentAccessToken = getValidTokenFromRequest(request);
+//   // Verify access token
+//   if (!currentAccessToken) {
+//     response.writeHead(401, 'Access not authorized');
+//     response.end();
+//   } else {
+//     let userAccessToken = accessTokens.find(tokenVerification => {
+//       return tokenVerification.token == request.headers.token;
+//     });
+//     let currentUser = users.find(theCurrentUser => {
+//       theCurrentUser.username == userAccessToken.username;
+//     });
+//     if (!currentUser) {
+//       response.writeHead(404, 'User not found');
+//       response.end();
+//       return;
+//     } else {
+//       response.writeHead(200, 'Retrieved users cart', { ...HEADERS });
+//       response.end(JSON.stringify(currentUser.cart));
+//     }
+//   }
+// });
 
 /****************************************************
  *  Add Items to Cart: POST /api/me/cart/:productId
@@ -246,60 +327,91 @@ router.post('/api/me/cart/:productId', (request, response) => {
       return;
     } else {
       const { productId } = request.params;
-      const validProductId = products.find(product => product.id === productId);
+      const validProductId = products.find(aProduct => aProduct.id === productId);
       if (!validProductId) {
         response.writeHead(400, 'Invalid product ID');
         response.end();
       }
       const itemInCart = currentUser.cart.find(
-        product => product.id === productId
+        aProduct => aProduct.id === productId
       );
       // If item is not already in cart, add it to cart
       if (!itemInCart) {
         const itemAddition = products.filter(
-          product => product.id === productId
+          aProduct => aProduct.id === productId
         );
         Object.assign(itemAddition[0], { quantity: 1 });
-        user.cart.push(itemAddition[0]);
+        currentUser.cart.push(itemAddition[0]);
         // If item is already in cart, update its quantity
       } else {
         itemInCart.quantity += 1;
       }
       response.writeHead(200, 'Product added to user cart', { ...HEADERS });
-      response.end(JSON.stringify(user.cart));
+      response.end(JSON.stringify(currentUser.cart));
     }
   }
 });
 
-/****************************************************
- *  Delete Items in Cart: DELETE /api/me/cart
+/*********************************************************
+ *  Delete Items in Cart: DELETE /api/me/cart/:productId
  *  <> Protected Route
- ****************************************************/
+ *********************************************************/
 
 router.delete('/api/me/cart/:productId', (request, response) => {
   let validAccessToken = getValidTokenFromRequest(request);
   if (!validAccessToken) {
     response.writeHead(
       401,
-      'You need to have access to this endpoint to continue'
+      'Access not authorized'
     );
     response.end();
   } else {
     let userAccessToken = accessTokens.find(tokenObject => {
       return tokenObject.token == request.headers.token;
     });
-    let user = users.find(user => {
-      return user.login.username == userAccessToken.username;
+    let currentUser = users.find(aCuurentUser => {
+      return aCurrentUser.login.username == userAccessToken.username;
     });
-    if (!user) {
-      response.writeHead(404, 'That user cannot be found');
+    if (!currentUser) {
+      response.writeHead(404, 'User not found');
       response.end();
       return;
-    } else {
+    } 
+    else {
+      const { productId } = request.params;
+      const validProductId = products.find(aProduct => aProduct.id === productId);
+      if (!validProductId) {
+        response.writeHead(400, 'Invalid product ID');
+        response.end();
+      }
+      const itemInCart = currentUser.cart.find(
+        aProduct => aProduct.id === productId
+      );
+      // If item is not in cart, notify user with error message
+      if (!itemInCart) {
+        response.writeHead(404, 'Item is not in cart');
+        response.end();
+      }
+      /******************************************************
+       * TODO: Reduce quantity by one if item is already in cart?
+       * ****************************************************/
+      // else
+      //   const itemToDelete = products.filter(
+      //     aProduct => aProduct.id === productId
+      //   );
+      //   Object.assign(itemAddition[0], { quantity: 1 });
+      //   currentUser.cart.push(itemAddition[0]);
+      //   // If item is already in cart, update its quantity
+      // } else {
+      //   itemInCart.quantity -= 1;
+      // }
+    else {
       response.writeHead(200, { 'Content-Type': 'application/json' });
       const { productId } = request.params;
-      user.cart = user.cart.filter(product => product.id !== productId);
-      response.end(JSON.stringify(user.cart));
+      currentUser.cart = currentUser.cart.filter(
+        product => product.id !== productId
+      );
+      response.end(JSON.stringify(currentUser.cart));
     }
   }
 });
@@ -329,4 +441,5 @@ module.exports = server;
 // DELETE /api/me/cart/:productId  JSON  resonse (Success: true or Delete:true)
 
 /*========TODO:=========*/
-// PUT /api/me/cart:
+// PUT /api/me/cart:  (edit cart)
+// Make sure ...HEADERS additions are consistent
