@@ -117,7 +117,7 @@ router.get('/api/brands/:id/products', (request, response) => {
 });
 
 /*************************************************
- *   Products: GET /api/products <> Public route
+ *   Products: GET /api/products (optional query) <> Public route
  *************************************************/
 router.get('/api/products', (request, response) => {
   const parsedUrl = url.parse(request.url);
@@ -142,6 +142,7 @@ router.get('/api/products', (request, response) => {
     //   response.writeHead(400, 'Unexpected error');
     //   return response.end();
   } else {
+    // If there's no query (query is empty) then return *all* products
     // queriedProducts = products;
     response.writeHead(200, 'Retrieved all products', {
       ...HEADERS
@@ -194,86 +195,10 @@ router.post('/api/login', (request, response) => {
   }
 });
 
-/***********************
- * OLd VERSION OF LOGIN
- * *********************/
-// router.post('/api/login', (request, response) => {
-//   const { username, password } = request.body;
-
-//   // Ensure necessary fields are entered
-//   if (!username || !password) {
-//     response.writeHead(400, 'Invalid username or password');
-//     response.end();
-//   }
-//   // Check for existing user
-//   users.find({ username }).then(user => {
-//     if (!user) {
-//       response.writeHead(400, 'Invalid username or password');
-//       response.end();
-//     }
-
-//     // Validate password
-//     else if (user.login.password !== request.body.password) {
-//       response.writeHead(400, 'Invalid username or password');
-//       response.end();
-//     } else if (
-//       user.login.username == request.body.username &&
-//       user.login.password == request.body.password
-//     ) {
-//       // After username and password validated, check access token
-//       let currentAccessToken = accessTokens.find(tokenVerifictation => {
-//         return tokenVerifictation.username == user.login.username;
-//       });
-
-//       if (currentAccessToken) {
-//         currentAccessToken.lastUpdated = new Date();
-//         response.writeHead(200, 'Now logged in', { ...HEADERS });
-//         response.end(JSON.stringify(currentAccessToken.token));
-//       } else {
-//         let newAccessToken = {
-//           username: user.login.username,
-//           lastUpdated: new Date(),
-//           token: uid(16)
-//         };
-//         accessTokens.push(newAccessToken);
-//         response.writeHead(200, 'Now logged in', { ...HEADERS });
-//         response.end(JSON.stringify(newAccessToken.token));
-//       }
-//     }
-//   });
-// });
-
 /*****************************************************
  *  Retrieve Cart: GET /api/me/cart <> Protected route
  *****************************************************/
-// router.get('/api/me/cart', (request, response) => {
-//   let validAccessToken = getValidTokenFromRequest(request);
-//   if (!validAccessToken) {
-//     response.writeHead(
-//       401,
-//       'You need to have access to this endpoint to continue'
-//     );
-//     response.end();
-//   } else {
-//     let userAccessToken = accessTokens.find(tokenObject => {
-//       return tokenObject.token == request.headers.token;
-//     });
-//     let user = users.find(user => {
-//       return user.login.username == userAccessToken.username;
-//     });
-//     if (!user) {
-//       response.writeHead(404, 'That user cannot be found');
-//       response.end();
-//       return;
-//     } else {
-//       response.writeHead(200, 'Successfully retrieved a users cart', {
-//         'Content-Type': 'application/json'
-//       });
-//       response.end(JSON.stringify(user.cart));
-//     }
-//   }
-// });
-
+// VERSION 2
 router.get('/api/me/cart', (request, response) => {
   let currentAccessToken = getValidTokenFromRequest(request);
   // Verify access token
@@ -300,7 +225,7 @@ router.get('/api/me/cart', (request, response) => {
 
 /****************************************************
  *  Add Items to Cart: POST /api/me/cart/:productId
- *  <> Protected oute
+ *  <> Protected route
  ****************************************************/
 router.post('/api/me/cart/:productId', (request, response) => {
   let currentAccessToken = getValidTokenFromRequest(request);
@@ -329,16 +254,51 @@ router.post('/api/me/cart/:productId', (request, response) => {
       const itemInCart = currentUser.cart.find(
         product => product.id === productId
       );
+      // If item is not already in cart, add it to cart
       if (!itemInCart) {
         const itemAddition = products.filter(
           product => product.id === productId
         );
         Object.assign(itemAddition[0], { quantity: 1 });
         user.cart.push(itemAddition[0]);
+        // If item is already in cart, update its quantity
       } else {
         itemInCart.quantity += 1;
       }
       response.writeHead(200, 'Product added to user cart', { ...HEADERS });
+      response.end(JSON.stringify(user.cart));
+    }
+  }
+});
+
+/****************************************************
+ *  Delete Items in Cart: DELETE /api/me/cart
+ *  <> Protected Route
+ ****************************************************/
+
+router.delete('/api/me/cart/:productId', (request, response) => {
+  let validAccessToken = getValidTokenFromRequest(request);
+  if (!validAccessToken) {
+    response.writeHead(
+      401,
+      'You need to have access to this endpoint to continue'
+    );
+    response.end();
+  } else {
+    let userAccessToken = accessTokens.find(tokenObject => {
+      return tokenObject.token == request.headers.token;
+    });
+    let user = users.find(user => {
+      return user.login.username == userAccessToken.username;
+    });
+    if (!user) {
+      response.writeHead(404, 'That user cannot be found');
+      response.end();
+      return;
+    } else {
+      response.writeHead(200, { 'Content-Type': 'application/json' });
+      const { productId } = request.params;
+      user.cart = user.cart.filter(product => product.id !== productId);
       response.end(JSON.stringify(user.cart));
     }
   }
@@ -366,7 +326,7 @@ module.exports = server;
 // POST /api/login
 // GET /api/me/cart
 // POST /api/me/cart/:productId
+// DELETE /api/me/cart/:productId  JSON  resonse (Success: true or Delete:true)
 
 /*========TODO:=========*/
-// POST /api/me/cart:
-// DELETE /api/me/cart/:productId
+// PUT /api/me/cart:
