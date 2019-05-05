@@ -56,7 +56,7 @@ describe('/GET products by brand', () => {
         done();
       });
   });
-  it('should return 400 INVALID BRAND ID if the brand id is not in the data set', done => {
+  it('should return 400 INVALID BRAND ID if the brand id does not match any in app data', done => {
     chai
       .request(server)
       .get('/api/brands/invalidID/products')
@@ -180,7 +180,7 @@ describe('/POST user login', () => {
         done();
       });
   });
-  it('should return 400 INCORRECTLY FORMATTED REQUEST if username or password is invalid', done => {
+  it('should return 400 INCORRECTLY FORMATTED REQUEST if username or password is not included', done => {
     chai
       .request(server)
       .post('/api/login')
@@ -191,7 +191,7 @@ describe('/POST user login', () => {
         done();
       });
   });
-  it('should return 401 INVALID USERNAME OR PASSWORD if username or password is invalid', done => {
+  it('should return 401 INVALID USERNAME OR PASSWORD if username or password does not match any in app data', done => {
     chai
       .request(server)
       .post('/api/login')
@@ -295,7 +295,7 @@ describe('/POST add product to user cart', () => {
         done();
       });
   });
-  it('should return 400 INVALID PRODUCT ID if id is invalid', done => {
+  it('should return 400 INVALID PRODUCT ID if product id does not match any in app data', done => {
     chai
       .request(server)
       .post('/api/me/cart/15')
@@ -339,7 +339,7 @@ describe('/DELETE product', () => {
         done();
       });
   });
-  it('should return 400 INVALID PRODUCT ID if product id is invalid', done => {
+  it('should return 400 INVALID PRODUCT ID if product id if item is not in cart', done => {
     chai
       .request(server)
       .delete('/api/me/cart/99')
