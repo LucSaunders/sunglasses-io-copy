@@ -83,11 +83,11 @@ describe('/GET products', () => {
         expect(response.body).to.be.an('array');
         expect(response.body).to.have.lengthOf(11);
         expect(response.body).to.deep.include({
-          id: '7',
-          categoryId: '3',
-          name: 'QDogs Glasses',
-          description: 'They bark',
-          price: 1500,
+          id: '11',
+          categoryId: '5',
+          name: 'Habanero',
+          description: 'The spiciest glasses in the world',
+          price: 153,
           imageUrls: [
             'https://image.shutterstock.com/z/stock-photo-yellow-sunglasses-white-backgound-600820286.jpg',
             'https://image.shutterstock.com/z/stock-photo-yellow-sunglasses-white-backgound-600820286.jpg',
@@ -122,6 +122,31 @@ describe('/GET products', () => {
         done();
       });
   });
+  it('should return all products that match query regardless of upper- or lower-case letters in the query', done => {
+    chai
+      .request(server)
+      .get('/api/products?query=bUtTeR')
+      .end((error, response) => {
+        expect(response).to.have.status(200);
+        expect('Content-Type', 'application/json');
+        assert.exists(response.body);
+        expect(response.body).to.be.an('array');
+        expect(response.body).to.have.lengthOf(1);
+        expect(response.body).to.deep.include({
+          id: '10',
+          categoryId: '5',
+          name: 'Peanut Butter',
+          description: 'The stickiest glasses in the world',
+          price: 103,
+          imageUrls: [
+            'https://image.shutterstock.com/z/stock-photo-yellow-sunglasses-white-backgound-600820286.jpg',
+            'https://image.shutterstock.com/z/stock-photo-yellow-sunglasses-white-backgound-600820286.jpg',
+            'https://image.shutterstock.com/z/stock-photo-yellow-sunglasses-white-backgound-600820286.jpg'
+          ]
+        });
+        done();
+      });
+  });
   it('should return 404 NO PRODUCTS MATCH QUERY if the query yields no products', done => {
     chai
       .request(server)
@@ -137,14 +162,12 @@ describe('/GET products', () => {
 /*====================================
  *   TEST User login: POST /api/login
  *====================================*/
-let token = null;
+let token = null; // token must be defined for the tests that follow
 describe('/POST user login', () => {
-  it('should succeed if username and password are valid', done => {
+  it('should succeed and return 200 NOW LOGGED IN if username and password are valid', done => {
     chai
       .request(server)
       .post('/api/login')
-      // .set('Accept', 'application/json')
-      // .set('Content-Type', 'application/json')
       .send({ username: 'greenlion235', password: 'waters' })
       .end((error, response) => {
         assert.isNull(error);
@@ -154,8 +177,19 @@ describe('/POST user login', () => {
         expect(response.body).to.be.lengthOf(16);
         // Set token equal to now-confirmed response.body
         token = response.body;
+        done();
       });
-    done();
+  });
+  it('should return 400 INCORRECTLY FORMATTED REQUEST if username or password is invalid', done => {
+    chai
+      .request(server)
+      .post('/api/login')
+      .send({ username: 'lazywolf342' })
+      .end((error, response) => {
+        assert.isNull(error);
+        expect(response).to.have.status(400);
+        done();
+      });
   });
   it('should return 401 INVALID USERNAME OR PASSWORD if username or password is invalid', done => {
     chai
@@ -175,7 +209,7 @@ describe('/POST user login', () => {
  *   TEST Cart Retrieval: GET /api/me/cart <> Protected route
  *==============================================================*/
 describe('/GET user cart', () => {
-  it('should return all products in users cart', done => {
+  it('should return all products in user cart', done => {
     chai
       .request(server)
       .get('/api/me/cart')
@@ -192,7 +226,7 @@ describe('/GET user cart', () => {
         done();
       });
   });
-  it('should return a 401 ACCESS NOT AUTHORIZED if no token or invalid token', done => {
+  it('should return 401 ACCESS NOT AUTHORIZED if no token or invalid token', done => {
     chai
       .request(server)
       .get('/api/me/cart')
@@ -205,41 +239,41 @@ describe('/GET user cart', () => {
   });
 });
 
-/*==============================================================
- *   TEST Quantity Update: POST /api/me/cart <> Protected route
- *==============================================================*/
-describe('/POST updated quantities of products in user cart', () => {
-  it('should update product quantities in user cart', done => {
-    chai
-      .request(server)
-      .post('/api/me/cart')
-      .set('token', token)
-      // .send({ updatedQuantities: [???] })
-      .end((error, response) => {
-        assert.isNull(error);
-        expect(response).to.have.status(200);
-        expect('Content-Type', 'application/json');
-        expect(response.body).to.be.an('array');
-        // expect(response.body).to.be.lengthOf(???);
-        // expect(response.body[0].quantity).to.eql(???);
-        // expect(response.body).to.deep.equal([ ???
-        //   {  }
-        // ]);
-        done();
-      });
-  });
-  it('should receive a 401 ACCESS NOT AUTHORIZED if no token or an invalid token', done => {
-    chai
-      .request(server)
-      .post('/api/me/cart')
-      .set('token', 'fartbarfToken')
-      .end((error, response) => {
-        assert.isNull(error);
-        expect(response).to.have.status(401);
-        done();
-      });
-  });
-});
+// /*==============================================================
+//  *   TEST Quantity Update: POST /api/me/cart <> Protected route
+//  *==============================================================*/
+// describe('/POST updated quantities of products in user cart', () => {
+//   it('should update product quantities in user cart', done => {
+//     chai
+//       .request(server)
+//       .post('/api/me/cart')
+//       .set('token', token)
+//       // .send({ updatedQuantities: [???] })
+//       .end((error, response) => {
+//         assert.isNull(error);
+//         expect(response).to.have.status(200);
+//         expect('Content-Type', 'application/json');
+//         expect(response.body).to.be.an('array');
+//         // expect(response.body).to.be.lengthOf(???);
+//         // expect(response.body[0].quantity).to.eql(???);
+//         // expect(response.body).to.deep.equal([ ???
+//         //   {  }
+//         // ]);
+//         done();
+//       });
+//   });
+//   it('should return a 401 ACCESS NOT AUTHORIZED if no token or an invalid token', done => {
+//     chai
+//       .request(server)
+//       .post('/api/me/cart')
+//       .set('token', 'fartbarfToken')
+//       .end((error, response) => {
+//         assert.isNull(error);
+//         expect(response).to.have.status(401);
+//         done();
+//       });
+//   });
+// });
 
 /*=====================================================================
  *   TEST Add Product: POST /api/me/cart/:productId <> Protected route
@@ -280,7 +314,7 @@ describe('/POST add product to user cart', () => {
         done();
       });
   });
-  it('should receive a 400 INVALID PRODUCT ID if id is invalid', done => {
+  it('should return 400 INVALID PRODUCT ID if id is invalid', done => {
     chai
       .request(server)
       .post('/api/me/cart/15')
@@ -292,7 +326,7 @@ describe('/POST add product to user cart', () => {
         done();
       });
   });
-  it('should receive a 401 ACCESS NOT AUTHORIZED if no token or invalid token', done => {
+  it('should return 401 ACCESS NOT AUTHORIZED if no token or invalid token', done => {
     chai
       .request(server)
       // .post('/api/me/cart/???')
@@ -309,8 +343,8 @@ describe('/POST add product to user cart', () => {
  *   TEST Remove Product from Cart: 
               DELETE /api/me/cart/:productId <> Protected route
  *===============================================================*/
-describe('/DELETE a product', () => {
-  it('should delete a product from a users cart', done => {
+describe('/DELETE product', () => {
+  it('should delete product from user cart', done => {
     chai
       .request(server)
       // .delete('/api/me/cart/???')
@@ -327,7 +361,7 @@ describe('/DELETE a product', () => {
         done();
       });
   });
-  it('should receive a 400 INVALID PRODUCT ID if product id is invalid', done => {
+  it('should return 400 INVALID PRODUCT ID if product id is invalid', done => {
     chai
       .request(server)
       .delete('/api/me/cart/99')
@@ -339,7 +373,7 @@ describe('/DELETE a product', () => {
         done();
       });
   });
-  it('should receive a 401 ACCESS NOT AUTHORIZED if no token or invalid token', done => {
+  it('should return 401 ACCESS NOT AUTHORIZED if no token or invalid token', done => {
     chai
       .request(server)
       .delete('/api/me/cart/12')
@@ -351,7 +385,7 @@ describe('/DELETE a product', () => {
       });
   });
   // TODO: have test cart with some items in it, and test this delete with a valid product id not in cart
-  // it('should receive a 404 PRODUCT ITEM NOT IN CART if product item is not in cart', done => {
+  // it('should return a 404 PRODUCT ITEM NOT IN CART if product item is not in cart', done => {
   //   chai
   //     .request(server)
   //     .delete('/api/me/cart/8')

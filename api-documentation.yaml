@@ -25,6 +25,8 @@ paths:
               $ref: '#/definitions/Brands'
         '400':
           description: Bad request
+        '404':
+          description: No brands found
         default:
           description: Unexpected error
           schema:
