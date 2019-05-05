@@ -29,8 +29,8 @@ console.log(`Server loaded ${users.length} users`);
 // Create an array to hold tokens
 let accessTokens = [];
 
-// A variable to limit validity of access tokens to 15 minutes
-const TOKEN_VALIDITY_TIMEOUT = 15 * 60 * 10000;
+// A variable to limit validity of access tokens to 30 minutes
+const TOKEN_VALIDITY_TIMEOUT = 30 * 60 * 1000;
 
 /************************************************
  * // Helper method to process/validate access token
@@ -90,7 +90,7 @@ const server = http
 router.get('/api/brands', (request, response) => {
   if (!brands) {
     response.writeHead(404, 'No brands found', { ...HEADERS });
-    return response.end();
+    response.end();
   }
   response.writeHead(200, 'Retrieved all brands', {
     ...HEADERS
@@ -104,15 +104,15 @@ router.get('/api/brands', (request, response) => {
 router.get('/api/brands/:id/products', (request, response) => {
   // Verify that the queried brand ID exists
   const { id } = request.params;
-  let brandIdExists = brands.find(brand => {
-    return brand.id === request.params.id;
+  let validBrandID = brands.find(individualBrand => {
+    return individualBrand.id === request.params.id;
   });
-  if (!brandIdExists) {
+  if (!validBrandID) {
     response.writeHead(400, 'Invalid brand ID', { ...HEADERS });
     response.end();
   }
   const brandFilteredProducts = products.filter(
-    brand => brand.categoryId === id
+    brandFilter => brandFilter.categoryId === id
   );
   response.writeHead(200, 'Retrieved products by brand ID', {
     ...HEADERS
@@ -180,8 +180,8 @@ router.post('/api/login', (request, response) => {
       );
     });
     if (user) {
-      let currentAccessToken = accessTokens.find(individualToken => {
-        return individualToken.username == user.login.username;
+      let currentAccessToken = accessTokens.find(verifiedToken => {
+        return verifiedToken.username == user.login.username;
       });
       if (currentAccessToken) {
         currentAccessToken.lastUpdated = new Date();
@@ -218,11 +218,11 @@ router.get('/api/me/cart', (request, response) => {
     response.writeHead(401, 'Access not authorized', { ...HEADERS });
     response.end();
   } else {
-    let userAccessToken = accessTokens.find(individualToken => {
-      return individualToken.token == request.headers.token;
+    let userAccessToken = accessTokens.find(verifiedToken => {
+      return verifiedToken.token == request.headers.token;
     });
-    let user = users.find(user => {
-      return user.login.username == userAccessToken.username;
+    let user = users.find(individualUser => {
+      return individualUser.login.username == userAccessToken.username;
     });
     if (!user) {
       response.writeHead(404, 'User not found', { ...HEADERS });
@@ -235,34 +235,6 @@ router.get('/api/me/cart', (request, response) => {
   }
 });
 
-/*****************************************************
- *  Retrieve Cart: GET /api/me/cart <> Protected route
- *****************************************************/
-// VERSION 2
-// router.get('/api/me/cart', (request, response) => {
-//   let currentAccessToken = getTokenFromRequest(request);
-//   // Verify access token
-//   if (!currentAccessToken) {
-//     response.writeHead(401, 'Access not authorized');
-//     response.end();
-//   } else {
-//     let userAccessToken = accessTokens.find(tokenVerification => {
-//       return tokenVerification.token == request.headers.token;
-//     });
-//     let currentUser = users.find(theCurrentUser => {
-//       theCurrentUser.username == userAccessToken.username;
-//     });
-//     if (!currentUser) {
-//       response.writeHead(404, 'User not found');
-//       response.end();
-//       return;
-//     } else {
-//       response.writeHead(200, 'Retrieved users cart', { ...HEADERS });
-//       response.end(JSON.stringify(currentUser.cart));
-//     }
-//   }
-// });
-
 /****************************************************
  *  Add Items to Cart: POST /api/me/cart/:productId
  *  <> Protected route
@@ -274,11 +246,11 @@ router.post('/api/me/cart/:productId', (request, response) => {
     response.writeHead(401, 'Access not authorized', { ...HEADERS });
     response.end();
   } else {
-    let userAccessToken = accessTokens.find(tokenVerifictation => {
-      return tokenVerifictation.token == request.headers.token;
+    let userAccessToken = accessTokens.find(verifiedToken => {
+      return verifiedToken.token == request.headers.token;
     });
-    let currentUser = users.find(aCurrentUser => {
-      return aCurrentUser.login.username == userAccessToken.username;
+    let currentUser = users.find(individualUser => {
+      return individualUser.login.username == userAccessToken.username;
     });
     if (!currentUser) {
       response.writeHead(404, 'User not found', { ...HEADERS });
@@ -287,25 +259,25 @@ router.post('/api/me/cart/:productId', (request, response) => {
     } else {
       const { productId } = request.params;
       const validProductId = products.find(
-        aProduct => aProduct.id === productId
+        productFilter => productFilter.id === productId
       );
       if (!validProductId) {
         response.writeHead(400, 'Invalid product ID', { ...HEADERS });
         response.end();
       }
       const itemInCart = currentUser.cart.find(
-        aProduct => aProduct.id === productId
+        productFilter => productFilter.id === productId
       );
       // If item is not already in cart, add it to cart
       if (!itemInCart) {
         const itemAddition = products.filter(
-          aProduct => aProduct.id === productId
+          productFilter => productFilter.id === productId
         );
         Object.assign(itemAddition[0], { quantity: 1 });
         currentUser.cart.push(itemAddition[0]);
         // If item is already in cart, update its quantity
       } else {
-        itemInCart.quantity += 1;
+        itemInCart.quantity++;
       }
       response.writeHead(200, 'Product added to user cart', { ...HEADERS });
       response.end(JSON.stringify(currentUser.cart));
@@ -318,27 +290,29 @@ router.post('/api/me/cart/:productId', (request, response) => {
  *  <> Protected Route
  *********************************************************/
 router.delete('/api/me/cart/:productId', (request, response) => {
-  let validAccessToken = getTokenFromRequest(request);
-  if (!validAccessToken) {
-    response.writeHead(
-      401,
-      'You need to have access to this endpoint to continue',
-      { ...HEADERS }
-    );
+  const { productId } = request.params;
+  let validProductID = products.find(individualProduct => {
+    return individualProduct.id === request.params.productId;
+  });
+  let currentAccessToken = getTokenFromRequest(request);
+  if (!currentAccessToken) {
+    response.writeHead(401, 'Access not authorized', { ...HEADERS });
     response.end();
   } else {
-    let userAccessToken = accessTokens.find(individualToken => {
-      return individualToken.token == request.headers.token;
+    let userAccessToken = accessTokens.find(verifiedToken => {
+      return verifiedToken.token == request.headers.token;
     });
-    let user = users.find(user => {
-      return user.login.username == userAccessToken.username;
+    let user = users.find(individualUser => {
+      return individualUser.login.username == userAccessToken.username;
     });
     if (!user) {
-      response.writeHead(404, 'That user cannot be found', { ...HEADERS });
+      response.writeHead(404, 'User not found', { ...HEADERS });
       response.end();
-      return;
+    } else if (!validProductID) {
+      response.writeHead(400, 'Invalid product ID', { ...HEADERS });
+      response.end();
     } else {
-      response.writeHead(200, { ...HEADERS });
+      response.writeHead(200, 'Product removed from user cart', { ...HEADERS });
       const { productId } = request.params;
       user.cart = user.cart.filter(product => product.id !== productId);
       response.end(JSON.stringify(user.cart));
@@ -346,97 +320,23 @@ router.delete('/api/me/cart/:productId', (request, response) => {
   }
 });
 
-// router.delete('/api/me/cart/:productId', (request, response) => {
-//   let validAccessToken = getTokenFromRequest(request);
-//   if (!validAccessToken) {
-//     response.writeHead(401, 'Access not authorized');
-//     response.end();
-//   } else {
-//     let userAccessToken = accessTokens.find(individualToken => {
-//       return individualToken.token == request.headers.token;
-//     });
-//     let currentUser = users.find(aUser => {
-//       return aUser.login.username == userAccessToken.username;
-//     });
-//     if (!currentUser) {
-//       response.writeHead(404, 'User not found');
-//       response.end();
-//       return;
-//     } else {
-//       response.writeHead(200, { 'Content-Type': 'application/json' });
-//       const { productId } = request.params;
-//       user.cart = user.cart.filter(product => product.id !== productId);
-//       response.end(JSON.stringify(user.cart));
-//     }
-//   }
-// });
-
-//     } else {
-//       const { productId } = request.params;
-//       const validProductId = products.find(
-//         aProduct => aProduct.id === productId
-//       );
-//       if (!validProductId) {
-//         response.writeHead(400, 'Invalid product ID');
-//         response.end();
-//       }
-//       const itemInCart = currentUser.cart.find(
-//         aProduct => aProduct.id === productId
-//       );
-//       // If item is not in cart, notify user with error message
-//       if (!itemInCart) {
-//         response.writeHead(404, 'Item is not in cart');
-//         response.end();
-//       }
-//       /******************************************************
-//        * TODO: Reduce quantity by one if item is already in cart?
-//        * ****************************************************/
-//       // else
-//       //   const itemToDelete = products.filter(
-//       //     aProduct => aProduct.id === productId
-//       //   );
-//       //   Object.assign(itemAddition[0], { quantity: 1 });
-//       //   currentUser.cart.push(itemAddition[0]);
-//       //   // If item is already in cart, update its quantity
-//       // } else {
-//       //   itemInCart.quantity -= 1;
-//       // }
-//       else {
-//         response.writeHead(200, { 'Content-Type': 'application/json' });
-//         const { productId } = request.params;
-//         currentUser.cart = currentUser.cart.filter(
-//           product => product.id !== productId
-//         );
-//         response.end(JSON.stringify(currentUser.cart));
-//       }
-//     }
-//   }
-// });
-
 module.exports = server;
 
 /***********************
- *  Notes
+ *  CRUD
  **********************/
 // Create -> Post (nonidempotent)
 // Read   -> Get
-// Update -> Put (can create a new entity or update an existing one; most appropriate for 'Edit cart'?)
+// Update -> Put (can create a new entity or update an existing one; most appropriate for 'Edit' functionality)
 // Delete -> Delete (idempotent; can be an asynchronous or long-running request)
-
-/*=======================*/
 
 /***********************
  *  All Routes
  ***********************/
-/*=========DONE========*/
 // GET /api/brands
 // GET /api/brands/:id/products
-// GET /api/products
+// GET /api/products (with optional query)
 // POST /api/login
 // GET /api/me/cart
 // POST /api/me/cart/:productId
-// DELETE /api/me/cart/:productId  JSON  resonse (Success: true or Delete:true)
-
-/*========TODO:=========*/
-// PUT /api/me/cart:  (edit cart)
-// Make sure ...HEADERS additions are consistent
+// DELETE /api/me/cart/:productId  [JSON resonse ('Success: true' or 'Delete: true')]

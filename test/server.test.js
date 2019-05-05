@@ -150,7 +150,7 @@ describe('/GET products', () => {
   it('should return 404 NO PRODUCTS MATCH QUERY if the query yields no products', done => {
     chai
       .request(server)
-      .get('/api/products?query=fartbarf')
+      .get('/api/products?query=barneyfife')
       .end((error, response) => {
         expect(response).to.have.status(404);
         assert.exists(response.body);
@@ -208,6 +208,7 @@ describe('/POST user login', () => {
 /*==============================================================
  *   TEST Cart Retrieval: GET /api/me/cart <> Protected route
  *==============================================================*/
+const bogusToken = '5avX40M3BB5iptJc';
 describe('/GET user cart', () => {
   it('should return all products in user cart', done => {
     chai
@@ -219,18 +220,15 @@ describe('/GET user cart', () => {
         expect(response).to.have.status(200);
         expect('Content-Type', 'application/json');
         expect(response.body).to.be.an('array');
-        // expect(response.body).to.be.lengthOf(???);
-        // expect(response.body).to.deep.include([
-        //   {}
-        // ]);
+        expect(response.body).to.be.lengthOf(0);
         done();
       });
   });
-  it('should return 401 ACCESS NOT AUTHORIZED if no token or invalid token', done => {
+  it('should return 401 ACCESS NOT AUTHORIZED if token is invalid', done => {
     chai
       .request(server)
       .get('/api/me/cart')
-      .set('token', 'fartbarfToken')
+      .set('token', bogusToken)
       .end((error, response) => {
         assert.isNull(error);
         expect(response).to.have.status(401);
@@ -239,42 +237,6 @@ describe('/GET user cart', () => {
   });
 });
 
-// /*==============================================================
-//  *   TEST Quantity Update: POST /api/me/cart <> Protected route
-//  *==============================================================*/
-// describe('/POST updated quantities of products in user cart', () => {
-//   it('should update product quantities in user cart', done => {
-//     chai
-//       .request(server)
-//       .post('/api/me/cart')
-//       .set('token', token)
-//       // .send({ updatedQuantities: [???] })
-//       .end((error, response) => {
-//         assert.isNull(error);
-//         expect(response).to.have.status(200);
-//         expect('Content-Type', 'application/json');
-//         expect(response.body).to.be.an('array');
-//         // expect(response.body).to.be.lengthOf(???);
-//         // expect(response.body[0].quantity).to.eql(???);
-//         // expect(response.body).to.deep.equal([ ???
-//         //   {  }
-//         // ]);
-//         done();
-//       });
-//   });
-//   it('should return a 401 ACCESS NOT AUTHORIZED if no token or an invalid token', done => {
-//     chai
-//       .request(server)
-//       .post('/api/me/cart')
-//       .set('token', 'fartbarfToken')
-//       .end((error, response) => {
-//         assert.isNull(error);
-//         expect(response).to.have.status(401);
-//         done();
-//       });
-//   });
-// });
-
 /*=====================================================================
  *   TEST Add Product: POST /api/me/cart/:productId <> Protected route
  *=====================================================================*/
@@ -282,35 +244,54 @@ describe('/POST add product to user cart', () => {
   it('should add specified product to user cart', done => {
     chai
       .request(server)
-      // .post('/api/me/cart/???')
+      .post('/api/me/cart/8')
       .set('token', token)
       .end((error, response) => {
         assert.isNull(error);
         expect(response).to.have.status(200);
         expect('Content-Type', 'application/json');
         expect(response.body).to.be.an('array');
-        // expect(response.body).to.be.lengthOf(???);
-        // expect(response.body).to.deep.equal([
-        //   {???}
-        // ]);
+        expect(response.body).to.be.lengthOf(1);
+        expect(response.body).to.deep.include({
+          quantity: 1,
+          id: '8',
+          categoryId: '4',
+          name: 'Coke cans',
+          description: 'The thickest glasses in the world',
+          price: 110,
+          imageUrls: [
+            'https://image.shutterstock.com/z/stock-photo-yellow-sunglasses-white-backgound-600820286.jpg',
+            'https://image.shutterstock.com/z/stock-photo-yellow-sunglasses-white-backgound-600820286.jpg',
+            'https://image.shutterstock.com/z/stock-photo-yellow-sunglasses-white-backgound-600820286.jpg'
+          ]
+        });
         done();
       });
   });
   it('should update product quantity if product is already in user cart', done => {
     chai
       .request(server)
-      // .post('/api/me/cart/??')
+      .post('/api/me/cart/8')
       .set('token', token)
       .end((error, response) => {
         assert.isNull(error);
         expect(response).to.have.status(200);
         expect('Content-Type', 'application/json');
         expect(response.body).to.be.an('array');
-        // expect(response.body).to.be.lengthOf(???);
-        // expect(response.body).to.deep.equal([
-        //   {???
-        //   }
-        // ]);
+        expect(response.body).to.be.lengthOf(1);
+        expect(response.body).to.deep.include({
+          quantity: 2,
+          id: '8',
+          categoryId: '4',
+          name: 'Coke cans',
+          description: 'The thickest glasses in the world',
+          price: 110,
+          imageUrls: [
+            'https://image.shutterstock.com/z/stock-photo-yellow-sunglasses-white-backgound-600820286.jpg',
+            'https://image.shutterstock.com/z/stock-photo-yellow-sunglasses-white-backgound-600820286.jpg',
+            'https://image.shutterstock.com/z/stock-photo-yellow-sunglasses-white-backgound-600820286.jpg'
+          ]
+        });
         done();
       });
   });
@@ -329,8 +310,8 @@ describe('/POST add product to user cart', () => {
   it('should return 401 ACCESS NOT AUTHORIZED if no token or invalid token', done => {
     chai
       .request(server)
-      // .post('/api/me/cart/???')
-      .set('token', 'fartbarfToken')
+      .post('/api/me/cart/5')
+      .set('token', bogusToken)
       .end((error, response) => {
         assert.isNull(error);
         expect(response).to.have.status(401);
@@ -347,17 +328,14 @@ describe('/DELETE product', () => {
   it('should delete product from user cart', done => {
     chai
       .request(server)
-      // .delete('/api/me/cart/???')
+      .delete('/api/me/cart/8')
       .set('token', token)
       .end((error, response) => {
         assert.isNull(error);
         expect(response).to.have.status(200);
         expect('Content-Type', 'application/json');
         expect(response.body).to.be.an('array');
-        // expect(response.body).to.be.lengthOf(???);
-        // expect(response.body).to.deep.equal([
-        //   { }
-        // ]);
+        expect(response.body).to.be.lengthOf(0);
         done();
       });
   });
@@ -377,53 +355,11 @@ describe('/DELETE product', () => {
     chai
       .request(server)
       .delete('/api/me/cart/12')
-      .set('token', 'fartbarfToken')
+      .set('token', bogusToken)
       .end((error, response) => {
         assert.isNull(error);
         expect(response).to.have.status(401);
         done();
       });
   });
-  // TODO: have test cart with some items in it, and test this delete with a valid product id not in cart
-  // it('should return a 404 PRODUCT ITEM NOT IN CART if product item is not in cart', done => {
-  //   chai
-  //     .request(server)
-  //     .delete('/api/me/cart/8')
-  //     .set('token', token)
-  //     .end((error, response) => {
-  //       assert.isNull(error);
-  //       expect(response).to.have.status(404);
-  //       expect('Content-Type', 'application/json');
-  //       done();
-  //     });
-  // });
 });
-
-/*=====================================
- *   LEFTOVERS: TEST Products: GET /api/products
- *=====================================*/
-// it('should return 404 BRANDS NOT FOUND if query exists but has no matches', done => {
-//   chai
-//     .request(server)
-//     // test case: query "bartfarf"
-//     .get('/api/products?query=bartfarf')
-//     .end((error, response) => {
-//       assert.exists(response.body);
-//       expect(response).to.have.status(404);
-//       done();
-//     });
-// });
-// it('should return all products specified by query', done => {
-//   chai
-//     .request(server)
-//     // test case: "best"
-//     .get('/api/products?query=best')
-//     .end((error, response) => {
-//
-//       expect(response).to.have.status(200);
-//       expect('Content-Type', 'application/json');
-//       expect(response.body).to.be.an('array');
-//       expect(response.body).to.have.lengthOf(4);
-//       done();
-//     });
-// });
