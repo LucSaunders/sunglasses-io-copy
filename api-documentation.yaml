@@ -25,13 +25,17 @@ paths:
               $ref: '#/definitions/Brands'
         '400':
           description: Bad request
+          schema:
+            $ref: '#/definitions/Error'
         '404':
           description: No brands found
+          schema:
+            $ref: '#/definitions/Error'
         default:
           description: Unexpected error
           schema:
             $ref: '#/definitions/Error'
-  /brands/{id}/products: 
+  /brands/{id}/products:
     get:
       tags:
         - Products by Brand
@@ -52,10 +56,12 @@ paths:
               $ref: '#/definitions/Products'
         '400':
           description: Invalid brand ID
+          schema:
+            $ref: '#/definitions/Errors'
         default:
           description: Unexpected error
-        schema:
-          $ref: '#/definitions/Errors'
+          schema:
+            $ref: '#/definitions/Error'
   /products:
     get:
       tags:
@@ -77,6 +83,8 @@ paths:
               $ref: '#/definitions/Products'
         '404':
           description: No products match query
+          schema:
+            $ref: '#/definitions/Error'
         default:
           description: Unexpected error
           schema:
@@ -87,7 +95,7 @@ paths:
         - User Login
       summary: Login with username and password
       operationId: loginUser
-       consumes:
+      consumes:
         - application/json
       produces:
         - application/json
@@ -103,12 +111,18 @@ paths:
           description: Now logged in
           schema:
             type: string
+        '400':
+          description: Incorrectly formatted request
+          schema:
+            $ref: '#/definitions/Error'
         '401':
           description: Invalid username or password
+          schema:
+            $ref: '#/definitions/Error'
         default:
           description: Unexpected error
           schema:
-            $ref: '#/definitions/Errors'
+            $ref: '#/definitions/Error'
   /me/cart:
     get:
       tags:
@@ -129,54 +143,22 @@ paths:
             items:
               $ref: '#/definitions/Cart'
         '401':
-          description: Access not authorized 
+          description: Access not authorized
+          schema:
+            $ref: '#/definitions/Error'
         '404':
           description: User not found
-        # default:
-        #   description: Unexpected error
-        #   schema:
-        #     $ref: '#/definitions/Error'
-    post:
-      tags:
-        - Shopping Cart
-      summary: Update product quantities in cart
-      operationId: addToCart
-      consumes:
-        - application/json
-      produces:
-        - application/json
-      parameters:
-        - name: accessToken
-          in: header
-          required: true
-          description: User access token
-          type: string
-        - name: updatedProductQuantities
-          in: body
-          required: true
-          description: Update product quantity in user cart
           schema:
-            $ref: '#/definitions/Quantities'
-      responses:
-        '200':
-          description: Updated product quanity in user cart
-          schema:
-            type: array
-            items:
-              $ref: '#/definitions/Cart'
-        '401':
-          description: Access not authorized. 
-        # '404':
-        #   description: User not found
+            $ref: '#/definitions/Error'
         default:
           description: Unexpected error
           schema:
-            $ref: '#/definitions/Errors'
+            $ref: '#/definitions/Error'
   /me/cart/{productId}:
     post:
       tags:
         - Shopping Cart
-      summary: Add product to user cart
+      summary: Add product to user cart or increment quantity if item already in cart
       parameters:
         - name: productId
           in: path
@@ -197,10 +179,16 @@ paths:
               $ref: '#/definitions/Cart'
         '400':
           description: Invalid product ID
+          schema:
+            $ref: '#/definitions/Error'
         '401':
           description: Access not authorized
+          schema:
+            $ref: '#/definitions/Error'
         '404':
           description: User not found
+          schema:
+            $ref: '#/definitions/Error'
         default:
           description: Unexpected error
           schema:
@@ -230,10 +218,16 @@ paths:
               $ref: '#/definitions/Cart'
         '400':
           description: Invalid product ID
+          schema:
+            $ref: '#/definitions/Error'
         '401':
-          description: Access not authorized 
+          description: Access not authorized
+          schema:
+            $ref: '#/definitions/Error'
         '404':
           description: Product item not in cart
+          schema:
+            $ref: '#/definitions/Error'
         default:
           description: Unexpected error
           schema:
@@ -323,14 +317,6 @@ definitions:
       - name
       - price
       - quantity
-  Quantities:
-    type: object
-    properties:
-      updatedProdcutQuantities:
-        type: array
-        items:
-          type: integer
-        description: Products quantities in cart
   Errors:
     type: object
     properties:
@@ -341,7 +327,7 @@ definitions:
         type: string
       fields:
         type: string
-# 
+#
 # **********************
 #    4xx Client Errors
 #  **********************
@@ -382,18 +368,11 @@ definitions:
 # **********************
 #    All Routes
 #  **********************
-# =========DONE========
 #  GET /api/brands
 #  GET /api/brands/:id/products
-#  GET /api/products
-
-# =======PENDING=======
+#  GET /api/products (optional query)
 #  POST /api/login
 #  GET /api/me/cart
-#  POST /api/me/cart
-#  DELETE /api/me/cart/:productId
 #  POST /api/me/cart/:productId
-
-# ======ABANDONED======
-#  GET /api/products/:id (Not original path recommended by assignment; abandoned)
+#  DELETE /api/me/cart/:productId
 

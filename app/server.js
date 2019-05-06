@@ -339,8 +339,8 @@ module.exports = server;
  ***********************/
 // GET /api/brands
 // GET /api/brands/:id/products
-// GET /api/products (with optional query)
+// GET /api/products (optional query)
 // POST /api/login
 // GET /api/me/cart
 // POST /api/me/cart/:productId
-// DELETE /api/me/cart/:productId  [JSON resonse ('Success: true' or 'Delete: true')]
+// DELETE /api/me/cart/:productId

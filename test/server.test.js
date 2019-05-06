@@ -238,7 +238,7 @@ describe('/GET user cart', () => {
 });
 
 /*=====================================================================
- *   TEST Add Product: POST /api/me/cart/:productId <> Protected route
+ *   TEST Add Product to Cart: POST /api/me/cart/:productId <> Protected route
  *=====================================================================*/
 describe('/POST add product to user cart', () => {
   it('should add specified product to user cart', done => {
@@ -321,8 +321,7 @@ describe('/POST add product to user cart', () => {
 });
 
 /*===============================================================
- *   TEST Remove Product from Cart: 
-              DELETE /api/me/cart/:productId <> Protected route
+ *   TEST Remove Product from Cart: DELETE /api/me/cart/:productId <> Protected route
  *===============================================================*/
 describe('/DELETE product', () => {
   it('should delete product from user cart', done => {
